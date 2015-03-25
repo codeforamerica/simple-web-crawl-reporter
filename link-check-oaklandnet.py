@@ -1,3 +1,13 @@
+import logging
+
+logging.basicConfig(format='%(levelname)10s %(message)s')
+logger = logging.getLogger('link-check')
+logger.setLevel(logging.DEBUG)
+
+log_critical = lambda *args: logger.critical(' '.join(map(str, args)))
+log_debug = lambda *args: logger.debug(' '.join(map(str, args)))
+log_info = lambda *args: logger.info(' '.join(map(str, args)))
+
 from bs4 import BeautifulSoup
 from requests.exceptions import TooManyRedirects
 from requests import get, head
@@ -18,7 +28,7 @@ urls = [(base_url, None, 0)]
 seen = set()
 
 parsed = writer(open('parsed-links-oaklandnet.csv', 'w', buffering=1))
-parsed.writerow(('URL', 'Title', 'Elapsed', 'Clicks'))
+parsed.writerow(('URL', 'Title', 'Load Time', 'Clicks Deep'))
 
 problems = writer(open('checked-links-oaklandnet.csv', 'w', buffering=1))
 problems.writerow(('Problem', 'URL', 'Referer'))
@@ -34,32 +44,34 @@ def get_soup_ingredients(html):
     
     return title, hrefs
 
-while urls and len(seen) < 20:
+while urls: # and len(seen) < 20:
     url, referer, hops = urls.pop(0)
     
     if url in seen:
-        print len(urls), 'seen', url
+        log_debug(len(urls), 'seen', url)
         continue
     
     try:
         got = head(url, allow_redirects=True)
     except TooManyRedirects:
-        print '!!!', url
+        log_critical('!!!', url)
         raise
     
     if got.url in seen:
-        print len(urls), 'seen', got.url
+        log_debug(len(urls), 'seen', got.url)
         continue
     
     seen.add(url)
     seen.add(got.url)
 
+    # The URL might need to be ignored.
     if ignore.match(got.url[len(base_url):]):
-        print len(urls), 'ignoring', got.url
+        log_debug(len(urls), 'ignoring', got.url)
         continue
     
+    # The URL might be one some other host.
     if not got.url.startswith(base_url):
-        print len(urls), 'skipping', got.url
+        log_debug(len(urls), 'skipping', got.url)
         continue
     
     if got.status_code != 200:
@@ -67,10 +79,10 @@ while urls and len(seen) < 20:
         continue
     
     if not got.headers['content-type'].startswith('text/html'):
-        print len(urls), 'skipping', got.url
+        log_debug(len(urls), 'skipping', got.url)
         continue
     
-    print len(urls), got.url
+    log_info(len(urls), got.url)
     
     start = time()
     got = get(url, allow_redirects=True)
