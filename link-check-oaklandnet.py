@@ -5,6 +5,7 @@ from requests import get, head
 from csv import writer
 from urlparse import urljoin, urlsplit, urlunsplit
 from re import compile
+from time import time
 
 ignore = compile(r'/blog/')
 ignore = compile(r'/00000')
@@ -12,16 +13,28 @@ ignore = compile(r'/00000')
 base_url = 'http://localhost/~migurski/Codeforamerica.org'
 base_url = 'http://alpha.codeforamerica.org'
 base_url = 'http://www2.oaklandnet.com'
+base_url = 'http://www.cstx.gov'
 urls = [(base_url, None, 0)]
 seen = set()
 
-parsed = writer(open('parsed-links-oaklandnet.csv', 'w'))
-parsed.writerow(('URL', 'Clicks'))
+parsed = writer(open('parsed-links-oaklandnet.csv', 'w', buffering=1))
+parsed.writerow(('URL', 'Title', 'Elapsed', 'Clicks'))
 
-problems = writer(open('checked-links-oaklandnet.csv', 'w'))
+problems = writer(open('checked-links-oaklandnet.csv', 'w', buffering=1))
 problems.writerow(('Problem', 'URL', 'Referer'))
 
-while urls: # and len(seen) < 20:
+def get_soup_ingredients(html):
+    ''' Return HTML title and list of hrefs for HTML data.
+    '''
+    head = html[html.index('<head'):html.index('</head')]
+    body = html[html.index('<body'):html.index('</body')]
+    
+    title = BeautifulSoup(head).find('title').text
+    hrefs = [a.get('href', '') for a in BeautifulSoup(body).find_all('a')]
+    
+    return title, hrefs
+
+while urls and len(seen) < 20:
     url, referer, hops = urls.pop(0)
     
     if url in seen:
@@ -58,12 +71,13 @@ while urls: # and len(seen) < 20:
         continue
     
     print len(urls), got.url
-    parsed.writerow((got.url, hops))
     
-    data = get(url, allow_redirects=True).content
-    body = data[data.index('<body'):data.index('</body')]
-    soup = BeautifulSoup(body)
-    hrefs = [a.get('href', '') for a in soup.find_all('a')]
+    start = time()
+    got = get(url, allow_redirects=True)
+    elapsed = time() - start
+
+    title, hrefs = get_soup_ingredients(got.content)
+    parsed.writerow((got.url, title, round(elapsed, 3), hops))
     
     for href in set(hrefs):
         link = urljoin(got.url, href)
