@@ -4,7 +4,6 @@ logging.basicConfig(format='%(levelname)10s %(message)s')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-log_critical = lambda *args: logger.critical(' '.join(map(str, args)))
 log_debug = lambda *args: logger.debug(' '.join(map(str, args)))
 
 from urlparse import urljoin, urlsplit, urlunsplit
@@ -68,8 +67,8 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
     
         try:
             got = head(url, allow_redirects=True)
-        except Exception:
-            log_critical('!!!', url)
+        except Exception as e:
+            logger.warning('Error in HEAD request for {}: {}'.format(url, e))
             continue
     
         if got.url in seen:
@@ -110,8 +109,13 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
         got = get(url, allow_redirects=True)
         elapsed = time() - start
 
-        title, hrefs = get_soup_ingredients(got.content)
-        parsed.writerow((got.url.encode('utf8'), title.encode('utf8'), round(elapsed, 3), hops))
+        try:
+            title, hrefs = get_soup_ingredients(got.content)
+        except Exception as e:
+            logger.warning('Failed to parse HTML from {}: {}'.format(got.url, e))
+            title, hrefs = None, []
+        finally:
+            parsed.writerow((got.url.encode('utf8'), title.encode('utf8'), round(elapsed, 3), hops))
     
         for href in set(hrefs):
             link = urljoin(got.url, href)
