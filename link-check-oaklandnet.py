@@ -4,20 +4,36 @@ from dfdcrawl import crawl
 
 from csv import writer
 from urlparse import urlsplit
-from re import compile
+from argparse import ArgumentParser
+from re import compile, IGNORECASE
 
-ignore = compile(r'/blog/')
-ignore = compile(r'/00000')
+parser = ArgumentParser(description='Yo')
 
-base_url = 'http://localhost/~migurski/Codeforamerica.org'
-base_url = 'http://alpha.codeforamerica.org'
-base_url = 'http://www2.oaklandnet.com'
-base_url = 'http://www.cstx.gov'
+parser.add_argument('url', help='Starting URL.')
+parser.add_argument('output', help='Output CSV filename.')
 
-parsed = writer(open('parsed-links-oaklandnet.csv', 'w', buffering=1))
-parsed.writerow(('URL', 'Title', 'Load Time', 'Clicks Deep'))
+parser.add_argument('-i', '--ignore', action='append', default=[],
+                    help='Add a URL regular expression to ignore.')
 
-problems = writer(open('checked-links-oaklandnet.csv', 'w', buffering=1))
-problems.writerow(('Problem', 'URL', 'Referer'))
+parser.add_argument('-a', '--accept', action='append', default=[],
+                    help='Add an acceptable hostname beyond the starting URL.')
 
-crawl(base_url, [ignore], parsed, problems)
+parser.add_argument('-e', '--errors', default='/dev/null',
+                    help='Error CSV filename.')
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    
+    start_url = args.url
+    
+    output = writer(open(args.output, 'w', buffering=1))
+    output.writerow(('URL', 'Title', 'Load Time', 'Clicks Deep'))
+    
+    errors = writer(open(args.errors, 'w', buffering=1))
+    errors.writerow(('Problem', 'URL', 'Referer'))
+
+    ignore_regexps = [compile(pattern, IGNORECASE) for pattern in args.ignore]
+    host_patterns = [urlsplit(start_url).netloc.replace('.', '\.')] + args.accept
+    host_regexps = [compile(pattern, IGNORECASE) for pattern in host_patterns]
+    
+    crawl(start_url, host_regexps, ignore_regexps, output, errors)

@@ -39,13 +39,18 @@ def get_soup_ingredients(html):
     
     return title, hrefs
 
-def crawl(base_url, ignore_pats, parsed, problems):
+def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems):
     '''
     '''
-    _, base_host, _, _, _ = urlsplit(base_url)
+    for host in hostname_regexps:
+        logger.debug('"{}" is an acceptable hostname pattern'.format(host.pattern))
+    
+    for ignore in ignore_regexps:
+        logger.debug('"{}" is a URL to ignore'.format(ignore.pattern))
+    
     start_time = time()
 
-    urls = [(base_url, None, 0)]
+    urls = [(start_url, None, 0)]
     seen = set()
 
     while urls: # and len(seen) < 20:
@@ -70,14 +75,17 @@ def crawl(base_url, ignore_pats, parsed, problems):
         seen.add(got.url)
 
         # The URL might need to be ignored.
-        ignore_matches = [True for pat in ignore_pats if pat.match(got.url)]
+        ignore_matches = [True for pat in ignore_regexps if pat.match(got.url)]
 
         if ignore_matches:
             log_debug(len(urls), 'ignoring', got.url)
             continue
     
         # The URL might be one some other host.
-        if urlsplit(got.url).netloc != base_host:
+        host = urlsplit(got.url).netloc
+        host_matches = [True for pat in hostname_regexps if pat.match(host)]
+
+        if not host_matches:
             log_debug(len(urls), 'skipping', got.url)
             continue
     
@@ -109,10 +117,6 @@ def crawl(base_url, ignore_pats, parsed, problems):
         
             elif href.startswith('#'):
                 # ignore internal anchors
-                continue
-        
-            elif not link.startswith(base_url):
-                # ignore external links
                 continue
         
             elif path.endswith('.pdf'):
