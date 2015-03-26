@@ -21,6 +21,9 @@ parser.add_argument('-a', '--accept', action='append', default=[],
 parser.add_argument('-e', '--errors', default='/dev/null',
                     help='Error CSV filename.')
 
+parser.add_argument('--limit', type=int,
+                    help='Crawl a limited number of pages.')
+
 if __name__ == '__main__':
     args = parser.parse_args()
     
@@ -36,4 +39,4 @@ if __name__ == '__main__':
     host_patterns = [urlsplit(start_url).netloc.replace('.', '\.')] + args.accept
     host_regexps = [compile(pattern, IGNORECASE) for pattern in host_patterns]
     
-    crawl(start_url, host_regexps, ignore_regexps, output, errors)
+    crawl(start_url, host_regexps, ignore_regexps, output, errors, args.limit)

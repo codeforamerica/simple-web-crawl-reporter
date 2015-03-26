@@ -39,7 +39,7 @@ def get_soup_ingredients(html):
     
     return title, hrefs
 
-def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems):
+def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
     '''
     '''
     for host in hostname_regexps:
@@ -53,7 +53,12 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems):
     urls = [(start_url, None, 0)]
     seen = set()
 
-    while urls: # and len(seen) < 20:
+    while urls:
+        # Stop if a limit was given.
+        if limit and len(seen) >= limit:
+            logger.info('Stopping after {} URLs'.format(limit))
+            break
+    
         url, referer, hops = urls.pop(0)
         urls = filter(lambda (u, r, h): u != url, urls)
 
