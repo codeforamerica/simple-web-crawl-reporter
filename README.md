@@ -10,11 +10,11 @@ Use
 
 Run the crawler on the command line:
 
-    link-check-oaklandnet.py <site URL> <output CSV filename>
+    crawl-website.py <site URL> <output CSV filename>
 
 More options:
 
-    link-check-oaklandnet.py --help
+    crawl-website.py --help
 
 Install
 -------

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from __future__ import division
 
 from dfdcrawl import crawl
@@ -7,7 +8,7 @@ from urlparse import urlsplit
 from argparse import ArgumentParser
 from re import compile, IGNORECASE
 
-parser = ArgumentParser(description='Yo')
+parser = ArgumentParser(description='Crawl a website and output a list of pages in CSV format.')
 
 parser.add_argument('url', help='Starting URL.')
 parser.add_argument('output', help='Output CSV filename.')
