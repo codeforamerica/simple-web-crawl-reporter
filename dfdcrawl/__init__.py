@@ -93,7 +93,7 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
         host_matches = [True for pat in hostname_regexps if pat.match(host)]
 
         if not host_matches:
-            log_debug(len(urls), 'skipping', got.url)
+            logger.debug('Skipping {}'.format(got.url))
             continue
     
         if got.status_code != 200:
@@ -107,7 +107,7 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
                 continue
     
         seconds_remain = (time() - start_time) * len(urls) / len(seen)
-        logger.info('{} est. {} left'.format(got.url, nice_time(seconds_remain)))
+        logger.info('{} est. {} left with {:,d} URLs to go'.format(got.url, nice_time(seconds_remain), len(urls)))
     
         start = time()
         got = get(url, **request_kwargs)
