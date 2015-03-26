@@ -107,7 +107,7 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
                 continue
     
         seconds_remain = (time() - start_time) * len(urls) / len(seen)
-        logger.info('{} est. {} left with {:,d} URLs to go'.format(got.url, nice_time(seconds_remain), len(urls)))
+        logger.info('{} est. {} left'.format(got.url, nice_time(seconds_remain)))
     
         start = time()
         got = get(url, **request_kwargs)
@@ -121,11 +121,16 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
         finally:
             parsed.writerow((got.url.encode('utf8'), title.encode('utf8'), round(elapsed, 3), hops))
     
+        new_url_count = 0
+        
         for href in set(hrefs):
             link = urljoin(got.url, href)
             scheme, host, path, query, _ = urlsplit(link)
             link = urlunsplit((scheme, host, path, query, ''))
         
+            ignore_matches = [True for pat in ignore_regexps if pat.match(href)]
+            host_matches = [True for pat in hostname_regexps if pat.match(host)]
+
             if href in ('#', ''):
                 problems.writerow(('Empty', href.encode('utf8'), got.url.encode('utf8')))
         
@@ -133,9 +138,16 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
                 # ignore internal anchors
                 continue
         
+            elif ignore_matches or not host_matches:
+                # ignore external link
+                continue
+    
             elif path.endswith('.pdf'):
                 # skip PDF downloads
                 continue
         
             elif link not in seen:
+                new_url_count += 1
                 urls.append((link, got.url, hops+1))
+
+        logger.debug('Added {:,d} links to {:,d} URLs'.format(new_url_count, len(urls)))
