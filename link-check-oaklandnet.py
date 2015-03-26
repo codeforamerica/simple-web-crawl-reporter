@@ -1,3 +1,4 @@
+from __future__ import division
 import logging
 
 logging.basicConfig(format='%(levelname)10s %(message)s')
@@ -27,11 +28,27 @@ base_url = 'http://www.cstx.gov'
 urls = [(base_url, None, 0)]
 seen = set()
 
+_, base_host, _, _, _ = urlsplit(base_url)
+
 parsed = writer(open('parsed-links-oaklandnet.csv', 'w', buffering=1))
 parsed.writerow(('URL', 'Title', 'Load Time', 'Clicks Deep'))
 
 problems = writer(open('checked-links-oaklandnet.csv', 'w', buffering=1))
 problems.writerow(('Problem', 'URL', 'Referer'))
+
+def nice_time(time):
+    if time <= 90:
+        return '{:.0f} seconds'.format(time)
+    if time < 60 * 60 * 1.5:
+        return '{:.0f} minutes'.format(time / 60)
+    if time < 24 * 60 * 60 * 1.5:
+        return '{:.0f} hours'.format(time / 3600)
+    if time < 7 * 24 * 60 * 60 * 1.5:
+        return '{:.0f} days'.format(time / 86400)
+    if time < 30 * 24 * 60 * 60 * 1.5:
+        return '{:.0f} weeks'.format(time / 604800)
+
+    return '{:.0f} months'.format(time / 2592000)
 
 def get_soup_ingredients(html):
     ''' Return HTML title and list of hrefs for HTML data.
@@ -44,9 +61,12 @@ def get_soup_ingredients(html):
     
     return title, hrefs
 
+start_time = time()
+
 while urls: # and len(seen) < 20:
     url, referer, hops = urls.pop(0)
-    
+    urls = filter(lambda (u, r, h): u != url, urls)
+
     if url in seen:
         log_debug(len(urls), 'seen', url)
         continue
@@ -70,7 +90,7 @@ while urls: # and len(seen) < 20:
         continue
     
     # The URL might be one some other host.
-    if not got.url.startswith(base_url):
+    if urlsplit(got.url).netloc != base_host:
         log_debug(len(urls), 'skipping', got.url)
         continue
     
@@ -82,14 +102,15 @@ while urls: # and len(seen) < 20:
         log_debug(len(urls), 'skipping', got.url)
         continue
     
-    log_info(len(urls), got.url)
+    seconds_remain = (time() - start_time) * len(urls) / len(seen)
+    logger.info('{} est. {} left'.format(got.url, nice_time(seconds_remain)))
     
     start = time()
     got = get(url, allow_redirects=True)
     elapsed = time() - start
 
     title, hrefs = get_soup_ingredients(got.content)
-    parsed.writerow((got.url, title, round(elapsed, 3), hops))
+    parsed.writerow((got.url.encode('utf8'), title.encode('utf8'), round(elapsed, 3), hops))
     
     for href in set(hrefs):
         link = urljoin(got.url, href)
@@ -97,7 +118,7 @@ while urls: # and len(seen) < 20:
         link = urlunsplit((scheme, host, path, query, ''))
         
         if href in ('#', ''):
-            problems.writerow(('Empty', href, got.url))
+            problems.writerow(('Empty', href.encode('utf8'), got.url.encode('utf8')))
         
         elif href.startswith('#'):
             # ignore internal anchors
