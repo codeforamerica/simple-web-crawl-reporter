@@ -113,7 +113,7 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
             title, hrefs = get_soup_ingredients(got.content)
         except Exception as e:
             logger.warning('Failed to parse HTML from {}: {}'.format(got.url, e))
-            title, hrefs = None, []
+            title, hrefs = u'', []
         finally:
             parsed.writerow((got.url.encode('utf8'), title.encode('utf8'), round(elapsed, 3), hops))
     
