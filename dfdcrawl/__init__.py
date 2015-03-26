@@ -13,6 +13,8 @@ from bs4 import BeautifulSoup
 from requests.exceptions import TooManyRedirects
 from requests import get, head
 
+UA_STRING = 'Code for America Simple Web Crawler <https://github.com/codeforamerica/simple-web-crawl-reporter>'
+
 def nice_time(time):
     if time <= 90:
         return '{:.0f} seconds'.format(time)
@@ -48,6 +50,7 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
         logger.debug('"{}" is a URL to ignore'.format(ignore.pattern))
     
     start_time = time()
+    request_kwargs = dict(allow_redirects=True, headers={'User-Agent': UA_STRING})
 
     urls = [(start_url, None, 0)]
     seen = set()
@@ -66,7 +69,7 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
             continue
     
         try:
-            got = head(url, allow_redirects=True)
+            got = head(url, **request_kwargs)
         except Exception as e:
             logger.warning('Error in HEAD request for {}: {}'.format(url, e))
             continue
@@ -95,6 +98,7 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
     
         if got.status_code != 200:
             problems.writerow((got.status_code, url, referer))
+            logger.warning('Got HTTP status {} for {}'.format(got.status_code, got.url))
             continue
     
         if 'content-type' in got.headers:
@@ -106,7 +110,7 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
         logger.info('{} est. {} left'.format(got.url, nice_time(seconds_remain)))
     
         start = time()
-        got = get(url, allow_redirects=True)
+        got = get(url, **request_kwargs)
         elapsed = time() - start
 
         try:
