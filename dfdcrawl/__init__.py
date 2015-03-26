@@ -97,7 +97,7 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
             continue
     
         if got.status_code != 200:
-            problems.writerow((got.status_code, url, referer))
+            problems.writerow((got.status_code, url.encode('utf8'), (referer or '').encode('utf8')))
             logger.warning('Got HTTP status {} for {}'.format(got.status_code, got.url))
             continue
     
