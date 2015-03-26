@@ -68,9 +68,9 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
     
         try:
             got = head(url, allow_redirects=True)
-        except TooManyRedirects:
+        except Exception:
             log_critical('!!!', url)
-            raise
+            continue
     
         if got.url in seen:
             log_debug(len(urls), 'seen', got.url)
@@ -98,9 +98,10 @@ def crawl(start_url, hostname_regexps, ignore_regexps, parsed, problems, limit):
             problems.writerow((got.status_code, url, referer))
             continue
     
-        if not got.headers['content-type'].startswith('text/html'):
-            log_debug(len(urls), 'skipping', got.url)
-            continue
+        if 'content-type' in got.headers:
+            if not got.headers['content-type'].startswith('text/html'):
+                log_debug(len(urls), 'skipping', got.url)
+                continue
     
         seconds_remain = (time() - start_time) * len(urls) / len(seen)
         logger.info('{} est. {} left'.format(got.url, nice_time(seconds_remain)))
